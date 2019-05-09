@@ -61,26 +61,27 @@ int main() {
 	/* 获取当前工作目录、用户名、主机名 */
 	int result = getCurWorkDir();
 	if (ERROR_SYSTEM == result) {
+		// echo -e "\033[字背景颜色;字体颜色m字符串\033[0m" 
 		fprintf(stderr, "\e[31;1mError: System error while getting current work directory.\n\e[0m");
 		exit(ERROR_SYSTEM);
 	}
-	getUsername();
+	getUsername();        
 	getHostname();
 
-	/* 启动myshell */
-	char argv[BUF_SZ];
+	/* 启动 myshell */
+	char argv[BUF_SZ];      // 参数
 	while (TRUE) {
 		printf("\e[32;1m%s@%s:%s\e[0m$ ", username, hostname,curPath); // 显示为绿色
 		/* 获取用户输入的命令 */
-		fgets(argv, BUF_SZ, stdin);
+		fgets(argv, BUF_SZ, stdin); 
 		int len = strlen(argv);
 		if (len != BUF_SZ) {
 			argv[len-1] = '\0';
 		}
 
-		int commandNum = splitCommands(argv);
+		int commandNum = splitCommands(argv); //分割字符串
 		
-		if (commandNum != 0) { // 用户有输入指令
+		if (commandNum != 0) {                            // 用户有输入指令
 			if (strcmp(commands[0], COMMAND_EXIT) == 0) { // exit命令
 				result = callExit();
 				if (ERROR_EXIT == result) {
