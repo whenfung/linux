@@ -1,0 +1,3 @@
+oello, this is the first line on file-mmapped buffer!
+And this is the second line.
+This is the last line!
