@@ -5,19 +5,19 @@
 
 #define N 7
 
-void printMaps(const char * name,  pid_t pid){
+void print(const char * name,  pid_t pid, const char * type){
 	printf("\n %s \n", name);
 	char order[64] = "cat /proc/";
 	char PID[8];
 	sprintf(PID, "%d", pid);
 	strcat(order, PID);
-	strcat(order, "/maps");
+	strcat(order, type);
 	system(order);
 }
 
 int main(){
 	pid_t pid = getpid();
-	printMaps("分配内存前", pid);
+	print("分配内存前", pid, "/maps");
 	
 	char* p[N];
 	int i;
@@ -26,24 +26,24 @@ int main(){
 			perror("malloc error ...");
 			exit(1);
 		}
-		printMaps("分配 1~6 号内存", pid);
+		print("分配 1~6 号内存", pid, "/maps");
 	}
 	free(p[2]);
-	printMaps("释放 2",pid);
+	print("释放 2",pid, "/maps");
 	free(p[3]);
-	printMaps("释放 3", pid);
+	print("释放 3", pid, "/maps");
 	free(p[5]);
-	printMaps("释放 4", pid);
+	print("释放 4", pid, "/maps");
 
 	if(NULL == (p[6] = (char *)malloc(1024 * 1024 * 1024))) {
 		perror("malloc error ...");
 		exit(1);
 	}
-	printMaps("分配 1024 MB", pid);
+	print("分配 1024 MB", pid, "/maps");
 
 
 	p[2] = (char *)malloc(64 * 1024 * 1024);
-	printMaps("再次分配 64 MB 内存", pid);
+	print("再次分配 64 MB 内存", pid, "/maps");
 	free(p[2]);
 	
 	free(p[0]);
