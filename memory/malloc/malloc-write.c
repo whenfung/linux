@@ -25,7 +25,7 @@ int main(){
 	
 	int i;
 	for(i = 0; i < N; i += 1024*4) {
-		p[i] = i;
+		p[i]=i;
 	}
 
 	print("读操作之后", pid, "/status");

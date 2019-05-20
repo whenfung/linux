@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#define TYPE "/status"
 
 void print(const char * name,  pid_t pid, const char * type){
 	printf("\n %s \n", name);
@@ -16,7 +17,7 @@ void print(const char * name,  pid_t pid, const char * type){
 
 int main(){
 	pid_t pid = getpid();
-	print("分配内存前", pid, "/maps");
+	print("分配内存前", pid, TYPE);
 	
 	char* p = NULL;
 	int i = 128;
@@ -25,6 +26,6 @@ int main(){
 		i = i + 64;
 		free(p);
 	}
-	print("分配内存后", pid, "/status");
+	print("分配内存后", pid, TYPE);
 	return 0;
 }

@@ -5,6 +5,8 @@
 
 #define N 7
 
+#define TYPE "/status"
+
 void print(const char * name,  pid_t pid, const char * type){
 	printf("\n %s \n", name);
 	char order[64] = "cat /proc/";
@@ -17,7 +19,7 @@ void print(const char * name,  pid_t pid, const char * type){
 
 int main(){
 	pid_t pid = getpid();
-	print("分配内存前", pid, "/maps");
+	print("分配内存前", pid, TYPE);
 	
 	char* p[N];
 	int i;
@@ -26,24 +28,24 @@ int main(){
 			perror("malloc error ...");
 			exit(1);
 		}
-		print("分配 1~6 号内存", pid, "/maps");
+		print("分配 1~6 号内存", pid, TYPE);
 	}
 	free(p[2]);
-	print("释放 2",pid, "/maps");
+	print("释放 2",pid, TYPE);
 	free(p[3]);
-	print("释放 3", pid, "/maps");
+	print("释放 3", pid, TYPE);
 	free(p[5]);
-	print("释放 4", pid, "/maps");
+	print("释放 5", pid, TYPE);
 
 	if(NULL == (p[6] = (char *)malloc(1024 * 1024 * 1024))) {
 		perror("malloc error ...");
 		exit(1);
 	}
-	print("分配 1024 MB", pid, "/maps");
+	print("分配 1024 MB", pid, TYPE);
 
 
 	p[2] = (char *)malloc(64 * 1024 * 1024);
-	print("再次分配 64 MB 内存", pid, "/maps");
+	print("再次分配 64 MB 内存", pid, TYPE);
 	free(p[2]);
 	
 	free(p[0]);
