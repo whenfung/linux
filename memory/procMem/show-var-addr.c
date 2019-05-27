@@ -2,7 +2,7 @@
 
 int main(){
 	char Mesg[] = "Hello World!\n";
-	printf("Mesg's addr: %p\n", Mesg);
+	printf("Mesg's addr: %lx\n",(long)Mesg);
 	getchar();
 	return 0;
 }
