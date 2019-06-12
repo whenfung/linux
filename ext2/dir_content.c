@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include "inode_address.h"
 
-#define BUFFSIZE 1024
-#define DIRECT 12
-#define INDIRECT 256
-#define LOPATH "/dev/loop0"
-static char* file_types[]={
+#define BUFFSIZE 1024         // 盘块大小
+#define DIRECT 12             // 直接索引有 12 个
+#define INDIRECT 256          // 一级间接索引有 256 个
+#define LOPATH "/dev/loop0"   // 磁盘设备位置
+static const char* file_types[]={
 	"unknown",
 	"regular file",
 	"directory",
@@ -48,10 +48,8 @@ softlink_redirect:
 
 	char ff[2]={0};
 	char buf[BUFFSIZE] = {0};
-	// char content_buf[BUFFSIZE+1] = {0};
 
 	int i_blocks[16] = {0};
-	// int address_buf[256] = {0};
 
 	fread(buf,BUFFSIZE,1,fp);
 	int inode_num = atoi(buf);
@@ -94,8 +92,7 @@ softlink_redirect:
 
 
 	int address = strtol(inode_addr(inode_num), NULL, 16);
-	int line = 0, rdcount = 0;
-	int fd = 0, i = 0, j = 0, m = 0, n = 0;
+	int fd = 0, i = 0, j = 0;
 	if ((fd = open(LOPATH, O_RDONLY)) == -1){
 		fprintf(stderr, "open file %s failed.\n", LOPATH);
 		return -1;
@@ -107,12 +104,12 @@ softlink_redirect:
 	}
 
 
-	/*find the start adress*/
+	// 找到起始位置
 	if (lseek(fd,address,SEEK_SET) != -1){
 		lseek(fd, 32+4*2, SEEK_CUR);	
 		read(fd, buf, 64);
 		for (i = 0; i < 15; i++){
-		//put the address into the i_blocks array
+			// 将地址塞到 i_blocks 数组
 			for (j = 0; j < 4; j++){
 				//i_blocks[i] += ((buf[i*4+j] & 0xff) << (j*4*2));
 				i_blocks[i] += ((buf[(i<<2)+j] & 0xff) << (j<<3));
@@ -120,7 +117,7 @@ softlink_redirect:
 		}
 	}
 
-	/*read file content directly*/
+	// 直接读取目录内容
 	for (i = 0; i < 12; i++){
 		if (i_blocks[i] == 0)break;
 		if ( ( ff[1]&0xff ) == 0x41 )
@@ -129,7 +126,7 @@ softlink_redirect:
 			cat_file_content(fd, i_blocks[i], 0);
 	}
 
-	/*read file content indirectly(256)*/
+	// 间接读取目录内容 (256)
 	if (i_blocks[12] != 0){
 		if ( ( ff[1]&0xff ) == 0x41 )
 			cat_dir_content(fd,i_blocks[12],0);
@@ -137,7 +134,7 @@ softlink_redirect:
 			cat_file_content(fd, i_blocks[12], 1);
 	}
 
-	/*read file content indirectly(64k)*/
+	// 间接读取目录内容 (64k)
 	if (i_blocks[13] != 0){
 		if ( ( ff[1]&0xff ) == 0x41 )
 			cat_dir_content(fd,i_blocks[13],0);
@@ -155,18 +152,95 @@ softlink_redirect:
 	return 0;
 }
 
-/* 
- * cat_dir_content is used for the system to catch the 
- * directory content from the blocks of the file system
- * using the recursion way. 
- */
+// 使用递归方式找到目录内容
 void cat_dir_content(int fd, int i_block_number, int degree){
 	if (i_block_number == 0 || degree < 0) return;
 	
 	int count = 0;
 	char buffer[BUFFSIZE+1]={0};
 
-	//one block = 1k = 1024 byte, so it needs to multiply 1024, 
+	// 一个块 = 1k = 1024 byte, 因此需要乘以1024
+	// 利用 "i_block_number<<10" 即可
+	lseek(fd, i_block_number<<10, SEEK_SET);
+	count = read(fd, buffer, BUFFSIZE);
+
+	if (count == 0){
+		printf("read over:the end of the file.\n");
+		return ;
+	}
+	else if (count == -1){
+		fprintf(stderr, "read file failed.\n");
+		return ;
+	}
+
+	// degree=0代表找到目录内容
+	if (degree == 0){
+		int i = 0, j = 0, total_len = 0;
+		char *name;
+		
+		while (1){
+			int inode_number=0, rec_len=0, name_len=0, file_type=0;
+			// 得到目录的索引号
+			for (j = 0; j < 4; j++){
+				inode_number += (buffer[i++]&0xff) << (j*8);
+			}	
+			// 得到目录项的首地址
+			for (j = 0; j < 2; j++){
+				rec_len += (buffer[i++]&0xff) << (j*8);
+			}
+			
+			if (inode_number==0||rec_len==0) break;
+			else if (total_len >= 1024) break;
+			else 	total_len+=rec_len;
+	
+			name_len = buffer[i++]&0xff;
+			file_type = buffer[i++]&0xff;
+		
+			name = (char*)malloc(sizeof(char)*(name_len+1));
+			memset(name, 0, sizeof(*name));
+	
+			for (j = 0; j < name_len; j++){
+				name[j] = buffer[i++]&0xff;
+			}
+	
+			// 记录下一个目录项的首地址
+			i = total_len;
+
+			printf("name: %s\n", name);
+			printf("name length: %d\n", name_len);
+			printf("inode number: %d\n", inode_number);
+			printf("file type: %s\n", file_types[file_type]);
+			printf("directory entry length: %d\n\n", rec_len);
+			free(name);
+		}
+	}
+	// 间接索引，继续查找
+	else {
+		int address_buf[256] = {0};
+		int i,j; 
+		for (i = 0; i < INDIRECT; i++){
+			for ( j = 0; j < 4; j++){
+				address_buf[i] += buffer[i*4+j] << (j*8);
+			}
+			// 递归
+			cat_dir_content(fd, address_buf[i], (degree-1));
+		}
+		
+	}
+}
+
+
+
+/* 
+ * 利用递归的方式（多级页表）查找目录内容
+ */
+void cat_file_content(int fd, int i_block_number, int degree){
+	if (i_block_number == 0 || degree < 0) return;
+	
+	int count = 0;
+	char buffer[BUFFSIZE+1]={0};
+
+	// one block = 1k = 1024 byte, so it needs to multiply 1024, 
 	//which can be "i_block_number<<10" as well
 	lseek(fd, i_block_number<<10, SEEK_SET);
 	count = read(fd, buffer, BUFFSIZE);
@@ -180,46 +254,9 @@ void cat_dir_content(int fd, int i_block_number, int degree){
 		return ;
 	}
 
-	//when degree equal to 0, do explain the dir
+	// when degree equal to 0, do explain the file
 	if (degree == 0){
-		int i = 0, j = 0, total_len = 0;
-		char *name;
-		
-		while (1){
-			int inode_number=0, rec_len=0, name_len=0, file_type=0;
-			//get the inode number of the directory
-			for (j = 0; j < 4; j++){
-				inode_number += (buffer[i++]&0xff) << (j*8);
-			}	
-			//get the directory entry length
-			for (j = 0; j < 2; j++){
-				rec_len += (buffer[i++]&0xff) << (j*8);
-			}
-			
-			if (inode_number==0||rec_len==0) break;
-			else if (total_len >= 1024) break;
-			else 	total_len+=rec_len;
-	
-			name_len = buffer[i++]&0xff;
-			file_type = buffer[i++]&0xff;
-		
-			name = (char*)malloc(sizeof(char)*(name_len+1));
-			memset(name, 0, sizeof(name));
-	
-			for (j = 0; j < name_len; j++){
-				name[j] = buffer[i++]&0xff;
-			}
-	
-			//record the index of next dir entry in the buffer indeed
-			i = total_len;
-
-			printf("name: %s\n", name);
-			printf("name length: %d\n", name_len);
-			printf("inode number: %d\n", inode_number);
-			printf("file type: %s\n", file_types[file_type]);
-			printf("directory entry length: %d\n\n", rec_len);
-			free(name);
-		}
+		printf("%s",buffer);
 	}
 	//or it will do the function again to jump 
 	//to the indirect address of the blocks
@@ -230,54 +267,7 @@ void cat_dir_content(int fd, int i_block_number, int degree){
 			for ( j = 0; j < 4; j++){
 				address_buf[i] += buffer[i*4+j] << (j*8);
 			}
-			//do recursion
-			cat_dir_content(fd, address_buf[i], (degree-1));
-		}
-		
-	}
-}
-
-
-
-/* 
- * cat_file_content is used for the system to catch the 
- * file content from the blocks of the file system
- * using the recursion way. 
- */
-void cat_file_content(int fd, int i_block_number, int degree){
-	if (i_block_number == 0 || degree < 0) return;
-	
-		int count = 0;
-		char buffer[BUFFSIZE+1]={0};
-
-		//one block = 1k = 1024 byte, so it needs to multiply 1024, 
-		//which can be "i_block_number<<10" as well
-		lseek(fd, i_block_number<<10, SEEK_SET);
-		count = read(fd, buffer, BUFFSIZE);
-
-		if (count == 0){
-			printf("read over:the end of the file.\n");
-			return ;
-		}
-		else if (count == -1){
-			fprintf(stderr, "read file failed.\n");
-			return ;
-		}
-
-		//when degree equal to 0, do explain the file
-		if (degree == 0){
-			printf("%s",buffer);
-		}
-		//or it will do the function again to jump 
-		//to the indirect address of the blocks
-	else {
-		int address_buf[256] = {0};
-		int i,j; 
-		for (i = 0; i < INDIRECT; i++){
-			for ( j = 0; j < 4; j++){
-				address_buf[i] += buffer[i*4+j] << (j*8);
-			}
-			//do recursion
+			// 递归
 			cat_file_content(fd, address_buf[i], (degree-1));
 		}		
 	}
