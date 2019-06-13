@@ -202,6 +202,7 @@ void cat_dir_content(int fd, int i_block_number, int degree){
 			for (j = 0; j < name_len; j++){
 				name[j] = buffer[i++]&0xff;
 			}
+			name[j] = '\0';
 	
 			// 记录下一个目录项的首地址
 			i = total_len;
@@ -254,12 +255,11 @@ void cat_file_content(int fd, int i_block_number, int degree){
 		return ;
 	}
 
-	// when degree equal to 0, do explain the file
+	// 递归结束
 	if (degree == 0){
 		printf("%s",buffer);
 	}
-	//or it will do the function again to jump 
-	//to the indirect address of the blocks
+	// 继续递归
 	else {
 		int address_buf[256] = {0};
 		int i,j; 
