@@ -41,7 +41,7 @@ int main(int argc, char *argv[]){
 	for (int i = 0; i < 4; i++){
 		inodes_per_group += (buf[i]&0xff) << (i*8);
 	}
-	//printf("inodes per group: %d\n", inodes_per_group);
+	printf("inodes per group: %d\n", inodes_per_group);
 
 	// 定位超级块中的 inode_size
 	lseek(fd,SUPER_BLOCK_ADDRESS+4*22,SEEK_SET);
