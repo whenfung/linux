@@ -51,10 +51,9 @@ int main(int argc, char *argv[]){
 	for (int i = 0 ; i < 2; i++){
 		inode_size += (buf[i]&0xff) << (i*8);
 	}
-	//printf("inode size: %d\n", inode_size);
+	printf("inode size: %d\n", inode_size);
 
-	// 索引号起始于 1 而不是 0，因此需要减 1。
-	// group_number = (inode_number-1)/inodes_per_group
+	// 索引号起始于 1 而不是 0，因此需要减 1，这里得到块组号
 	int group_number = (inode_number-1)/inodes_per_group;
 
 	// 在索引表中的索引偏移是 (inode_number-1)%inodes_per_group
@@ -63,18 +62,16 @@ int main(int argc, char *argv[]){
 	printf("group number: %d\n", group_number);
 	printf("inode offset: %d\n", offset);
 	
-	// 根据索引号 inode_number 计算目标地址 target_address
+	// 根据根据块组号找到块组描述符结构体的位置，在 group descriptors 中
 	int target_group_address = GROUP_DESC_ADDRESS + group_number*GROUP_DESC_SIZE;	
 
 	printf("target group address: %08x\n", target_group_address);
 	
 	// 找到目标地址
-	// 加 2*4 是因为 the offset of the attribute inode table address is 
-	// the third word(one word = 4 bytes = 32 bit)
-	// of the ext2_group_desc
+	// 加 2*4 是因为 ext2_group_desc 的第三个字是 inode table 的首地址
 	lseek(fd, target_group_address+2*4, SEEK_SET);
 	
-	// 计算索引表地址
+	// 获取索引表地址
 	int inode_table_address = 0;
 	if ((rd=read(fd, buf, 4)) == 4)
 		for (int i = 0; i < 4; i++){
@@ -82,10 +79,7 @@ int main(int argc, char *argv[]){
 		}
 	printf("inode table address: %08x(block number)\n", inode_table_address);
 
-	// 找到索引表地址
-	// 使用 "<<10" 因为索引表地址记录的是块号，需要乘以 1024 得到在 /dev/loop0 的真实地址
-	lseek(fd, (inode_table_address<<10) + (offset*inode_size), SEEK_SET);
-			
+	// 找到节点所指的文件数据的开始地址			
 	printf("inode address: %08x\n", (inode_table_address<<10)+(offset*inode_size));
 
 	return 0;
