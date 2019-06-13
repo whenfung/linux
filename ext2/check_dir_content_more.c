@@ -109,41 +109,41 @@ void cat_dir_content(int fd, int i_block_number, int degree){
 		char *name;
 		
 		while (1){
-		int inode_number=0, rec_len=0, name_len=0, file_type=0;
+			int inode_number=0, rec_len=0, name_len=0, file_type=0;
 
-		// 得到目录的索引号
-		for (j = 0; j < 4; j++){
-			inode_number += (buffer[i++]&0xff) << (j*8);
-		}
+			// 得到目录的索引号
+			for (j = 0; j < 4; j++){
+				inode_number += (buffer[i++]&0xff) << (j*8);
+			}
 
-		// 得到目录项长度，由于文件名是不定长的
-		for (j = 0; j < 2; j++){
-			rec_len += (buffer[i++]&0xff) << (j*8);
-		}
+			// 得到目录项长度，由于文件名是不定长的
+			for (j = 0; j < 2; j++){
+				rec_len += (buffer[i++]&0xff) << (j*8);
+			}	
 		
-		if (inode_number==0||rec_len==0) break;
-		else if (total_len >= 1024) break;
-		else 	total_len+=rec_len;
+			if (inode_number==0||rec_len==0) break;
+			else if (total_len >= 1024) break;
+			else 	total_len+=rec_len;
 
-		name_len = buffer[i++]&0xff;
-		file_type = buffer[i++]&0xff;
+			name_len = buffer[i++]&0xff;
+			file_type = buffer[i++]&0xff;
 	
-		name = (char*)malloc(sizeof(char)*(name_len+1));
-		memset(name, 0, sizeof(*name));
+			name = (char*)malloc(sizeof(char)*(name_len+1));
+			memset(name, 0, sizeof(*name));
 
-		for (j = 0; j < name_len; j++){
-			name[j] = buffer[i++]&0xff;
-		}
+			for (j = 0; j < name_len; j++){
+				name[j] = buffer[i++]&0xff;
+			}
 	
-		// 记录下一个目录项的起始位置
-		i = total_len;
+			// 记录下一个目录项的起始位置
+			i = total_len;
 
-		printf("name: %s\n", name);
-		printf("name length: %d\n", name_len);
-		printf("inode number: %d\n", inode_number);
-		printf("file type: %s\n", file_types[file_type]);
-		printf("directory entry length: %d\n\n", rec_len);
-		free(name);
+			printf("name: %s\n", name);
+			printf("name length: %d\n", name_len);
+			printf("inode number: %d\n", inode_number);
+			printf("file type: %s\n", file_types[file_type]);
+			printf("directory entry length: %d\n\n", rec_len);
+			free(name);
 		}
 	}
 	// 继续递归，多级页表思想
